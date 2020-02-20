@@ -1,0 +1,347 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+//Struct holds player information
+typedef struct Player {
+  char name[25];
+  char checker_name[3];
+  int default_score;
+  int winner_flag;
+} Player;
+
+//Struct holds board information
+typedef struct Grid {
+  int row;
+  int col;
+  int connect;
+  int checker_counter;
+  char empty_space[3];
+} Grid;
+
+//Creates a struct player and returns it
+Player *create_player(char *p_name, char *c_name, int d_score, int w_flag);
+
+Grid *create_grid(int rows, int cols, int connects, int check_count);
+
+void clear_grid(Grid *grid_data, char grid[][grid_data->col]);
+
+void clear_players(Player *p1, Player *p2);
+
+void print_grid(Grid *grid_data, char grid[][grid_data->col]);
+
+void default_setting(Player **p1, Player **p2, Grid **grid_data);
+
+void vertical_connect(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col);
+
+void horizontal_connect(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col);
+
+void rdiagonal_connect(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col);
+
+void ldiagonal_connect(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col);
+
+void check_winner(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col);
+
+int check_column(Player *player, Grid *grid_data, char grid[][grid_data->col]);
+
+int check_sentinel(int num);
+
+int insert_checker(Player *player, Grid *grid_data, char grid[][grid_data->col]);
+
+int game_start(Player **p1, Player **p2, Grid *grid_data, char grid[][grid_data->col]);
+
+int main(void) {
+  Player *player1 = NULL, *player2 = NULL;
+  Grid *board_data = NULL;
+  int sentinel = 0;
+
+  default_setting(&player1, &player2, &board_data);
+  char board[board_data->row][board_data->col];
+  clear_grid(board_data, board);
+  print_grid(board_data, board);
+
+  while(sentinel >= 0) {
+    sentinel = game_start(&player1, &player2, board_data, board);
+    if(sentinel == 1) {
+      printf("Player %s score is: %d\nPlayer %s score is: %d\n\n",
+      player1->name, player1->default_score, player2->name, player2->default_score);
+      sentinel = check_sentinel(sentinel);
+      if(sentinel == 2) {
+        printf("Lets play another game of Connect 4!!!!\n\n");
+        clear_grid(board_data, board);
+        print_grid(board_data, board);
+        sentinel = 0;
+      } else if(sentinel == 3) {
+        printf("Lets play a game of Connect 4!!!!\n\n");
+        clear_grid(board_data, board);
+        print_grid(board_data, board);
+        clear_players(player1, player2);
+        sentinel = 0;
+      }
+    }
+  }
+  printf("Thanks for playing!!!\n");
+  free(player1);
+  free(player2);
+  free(board_data);
+}
+
+Player *create_player(char *p_name, char *c_name, int d_score, int w_flag) {
+  Player *temp_player = (Player*)malloc(sizeof(Player));
+  strcpy(temp_player->name, p_name);
+  strcpy(temp_player->checker_name, c_name);
+  temp_player->default_score = d_score;
+  temp_player->winner_flag = w_flag;
+  return temp_player;
+}
+
+Grid *create_grid(int rows, int cols, int connects, int check_count) {
+  Grid *temp_grid = (Grid*)malloc(sizeof(Grid));
+  temp_grid->row = rows;
+  temp_grid->col = cols;
+  temp_grid->connect = connects;
+  temp_grid->checker_counter = check_count;
+  strcpy(temp_grid->empty_space, "O");
+  return temp_grid;
+}
+
+void clear_grid(Grid *grid_data, char grid[][grid_data->col]) {
+  grid_data->checker_counter = 0;
+  for(int r = 0; r < grid_data->row; r++) {
+    for(int c = 0; c < grid_data->col; c++) {
+      grid[r][c] = *grid_data->empty_space;
+    }
+  }
+}
+
+void clear_players(Player *p1, Player *p2) {
+  printf("Enter a name for player1: ");
+  scanf("%s", p1->name);
+  strcpy(p2->name, p1->name);
+  p1->default_score = 0;
+  p2->default_score = 0;
+  while(strcmp(p1->name, p2->name) == 0) {
+    printf("Enter a name for player2 that is different then player1: ");
+    scanf("%s", p2->name);
+  }
+}
+
+void print_grid(Grid *grid_data, char grid[][grid_data->col]) {
+  printf("%*s", 3, " ");
+  for(int num = 1; num <= grid_data->col; num++) {
+    printf("%d ", num);
+  }
+  printf("\n");
+  for(int r = 0; r < grid_data->row; r++) {
+    printf("|| ");
+    for(int c = 0; c < grid_data->col; c++) {
+      printf("%c ", grid[r][c]);
+    }
+    printf("||\n");
+  }
+  printf("\n");
+}
+
+void default_setting(Player **p1, Player **p2, Grid **grid_data) {
+
+  char name1[25], name2[25], checker1[3] = "R", checker2[3] = "Y";
+  int default_score = 0, player_flag = 0;
+  int default_row = 6, default_col = 7, default_connect = 4, checker_counter = 0;
+  printf("Lets play a game of Connect 4!!!!\n\n");
+  if(*p1 == NULL && *p2 == NULL && *grid_data == NULL) {
+    printf("Enter a name for player1: ");
+    scanf("%s", name1);
+    *p1 = create_player(name1, checker1, default_score, player_flag);
+    strcpy(name2, name1);
+    while(strcmp(name2, name1) == 0) {
+      printf("Please enter a name for player2 that is different then player1: ");
+      scanf("%s", name2);
+    }
+    printf("\n");
+    *p2 = create_player(name2, checker2, default_score, player_flag);
+    *grid_data = create_grid(default_row, default_col, default_connect, checker_counter);
+    return;
+  }
+}
+
+void vertical_connect(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col) {
+  if(current_row <= 2) {
+    if(grid[current_row][current_col] == player->checker_name[0] &&
+       grid[current_row + 1][current_col] == player->checker_name[0] &&
+       grid[current_row + 2][current_col] == player->checker_name[0] &&
+       grid[current_row + 3][current_col ] == player->checker_name[0]) {
+         player->winner_flag = 1;
+         return;
+       }
+     }
+   }
+
+void horizontal_connect(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col) {
+  if(grid[current_row][current_col] == player->checker_name[0] &&
+     grid[current_row][current_col + 1] == player->checker_name[0] &&
+     grid[current_row][current_col + 2] == player->checker_name[0] &&
+     grid[current_row][current_col + 3] == player->checker_name[0]) {
+       player->winner_flag = 1;
+       return;
+  } if(grid[current_row][current_col] == player->checker_name[0] &&
+       grid[current_row][current_col - 1] == player->checker_name[0] &&
+       grid[current_row][current_col + 1] == player->checker_name[0] &&
+       grid[current_row][current_col + 2] == player->checker_name[0]) {
+         player->winner_flag = 1;
+       return;
+  } if(grid[current_row][current_col] == player->checker_name[0] &&
+       grid[current_row][current_col - 1] == player->checker_name[0] &&
+       grid[current_row][current_col - 2] == player->checker_name[0] &&
+       grid[current_row][current_col + 1] == player->checker_name[0]) {
+         player->winner_flag = 1;
+       return;
+  } if(grid[current_row][current_col] == player->checker_name[0] &&
+       grid[current_row][current_col - 1] == player->checker_name[0] &&
+       grid[current_row][current_col - 2] == player->checker_name[0] &&
+       grid[current_row][current_col - 3] == player->checker_name[0]) {
+         player->winner_flag = 1;
+       return;
+  }
+}
+
+void rdiagonal_connect(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col) {
+  if(grid[current_row][current_col] == player->checker_name[0] &&
+     grid[current_row - 1][current_col + 1] == player->checker_name[0] &&
+     grid[current_row - 1][current_col + 2] == player->checker_name[0] &&
+     grid[current_row - 1][current_col + 3] == player->checker_name[0]) {
+       player->winner_flag = 1;
+       return;
+  } if(grid[current_row][current_col] == player->checker_name[0] &&
+       grid[current_row + 1][current_col - 1] == player->checker_name[0] &&
+       grid[current_row - 1][current_col + 1] == player->checker_name[0] &&
+       grid[current_row - 2][current_col + 2] == player->checker_name[0]) {
+         player->winner_flag = 1;
+       return;
+  } if(grid[current_row][current_col] == player->checker_name[0] &&
+       grid[current_row + 1][current_col - 1] == player->checker_name[0] &&
+       grid[current_row + 2][current_col - 2] == player->checker_name[0] &&
+       grid[current_row - 1][current_col + 1] == player->checker_name[0]) {
+         player->winner_flag = 1;
+       return;
+  } if(grid[current_row][current_col] == player->checker_name[0] &&
+       grid[current_row + 1][current_col - 1] == player->checker_name[0] &&
+       grid[current_row + 2][current_col - 2] == player->checker_name[0] &&
+       grid[current_row + 3][current_col - 3] == player->checker_name[0]) {
+         player->winner_flag = 1;
+       return;
+  }
+}
+
+void ldiagonal_connect(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col) {
+  if(grid[current_row][current_col] == player->checker_name[0] &&
+     grid[current_row - 1][current_col - 1] == player->checker_name[0] &&
+     grid[current_row - 2][current_col - 2] == player->checker_name[0] &&
+     grid[current_row - 3][current_col - 3] == player->checker_name[0]) {
+       player->winner_flag = 1;
+       return;
+  } if(grid[current_row][current_col] == player->checker_name[0] &&
+       grid[current_row + 1][current_col + 1] == player->checker_name[0] &&
+       grid[current_row - 1][current_col - 1] == player->checker_name[0] &&
+       grid[current_row - 2][current_col - 2] == player->checker_name[0]) {
+         player->winner_flag = 1;
+       return;
+  } if(grid[current_row][current_col] == player->checker_name[0] &&
+     grid[current_row - 1][current_col - 1] == player->checker_name[0] &&
+     grid[current_row + 1][current_col + 1] == player->checker_name[0] &&
+     grid[current_row + 2][current_col + 2] == player->checker_name[0]) {
+       player->winner_flag = 1;
+       return;
+  } if(grid[current_row][current_col] == player->checker_name[0] &&
+     grid[current_row + 1][current_col + 1] == player->checker_name[0] &&
+     grid[current_row + 2][current_col + 2] == player->checker_name[0] &&
+     grid[current_row + 3][current_col + 3] == player->checker_name[0]) {
+       player->winner_flag = 1;
+       return;
+  }
+}
+
+int check_sentinel(int num) {
+  char str[20];
+  while(num != 2 && num != 3 && num != -1) {
+    printf("Enter 2 for a rematch\nEnter 3 for a new game\nEnter -1 to stop playing\nEnter:");
+    scanf("%s", &str);
+    num = atoi(str);
+    if(num == 0) {
+      printf("Invalid Input\n\n");
+    } else if(num != 2 && num != 3 && num != -1) {
+      printf("Wrong number\n\n");
+    } else if(num != 2 && num != 3 && num != -1) {
+      printf("Wrong number\n\n");
+    }
+  }
+  printf("\n");
+  return num;
+}
+
+void check_winner(Player *player, Grid *grid_data, char grid[][grid_data->col], int current_row, int current_col) {
+  if(player->winner_flag == 0) {
+    vertical_connect(player, grid_data, grid, current_row, current_col);
+  } if(player->winner_flag == 0) {
+    horizontal_connect(player, grid_data, grid, current_row, current_col);
+  } if(player->winner_flag == 0) {
+    rdiagonal_connect(player, grid_data, grid, current_row, current_col);
+  } if(player->winner_flag == 0) {
+    ldiagonal_connect(player, grid_data, grid, current_row, current_col);
+  }
+}
+
+int check_column(Player *player, Grid *grid_data, char grid[][grid_data->col]) {
+  int column = 0;
+  char str[20];
+  while(column == 0) {
+    printf("Player %s enter a column to put a checker in: ", player->name);
+    scanf("%s", &str);
+    column = atoi(str);
+    if(column == 0) {
+      printf("Invalid Input\n\n");
+    } else if(column > grid_data->col || column < 0) {
+      printf("Incorect Column\n\n");
+      column = 0;
+    } else if(grid[0][column - 1] != 'O') {
+      printf("Column is Full\n\n");
+      column = 0;
+    }
+  }
+  printf("\n");
+  return column;
+}
+
+int insert_checker(Player *player, Grid *grid_data, char grid[][grid_data->col]) {
+  int choice_column;
+  choice_column = check_column(player, grid_data, grid);
+  for(int r = grid_data->row - 1; r >= 0; r--) {
+    if(grid[r][choice_column - 1] == 'O') {
+      grid[r][choice_column - 1] = player->checker_name[0];
+      grid_data->checker_counter += 1;
+      print_grid(grid_data, grid);
+      check_winner(player, grid_data, grid, r, choice_column-1);
+      if(player->winner_flag == 1){
+        printf("Player %s wins the game!\n", player->name);
+        player->winner_flag = 0;
+        player->default_score += 1;
+        return 1;
+      }
+      break;
+    }
+  }
+  return 0;
+}
+
+int game_start(Player **p1, Player **p2, Grid *grid_data, char grid[][grid_data->col]) {
+  if(insert_checker(*p1, grid_data, grid) == 1) {
+    return 1;
+  }
+  if(insert_checker(*p2, grid_data, grid) == 1) {
+    return 1;
+  }
+  if(grid_data->checker_counter == (grid_data->row*grid_data->col)) {
+    printf("Its a tie!\n");
+    return 1;
+  }
+  return 0;
+}
